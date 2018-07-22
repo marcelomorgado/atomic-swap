@@ -5,8 +5,7 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "light-server -s . -p 8080 -o",
-    "build": "browserify node_modules/bip39/index.js --standalone bip39 -o dist/thridparties/bip39.min.js && browserify node_modules/request-promise/lib/rp.js --standalone rp -o dist/thridparties/request-promise.min.js"
+    "start": "light-server -s . -p 8080 -o"
   },
   "repository": {
     "type": "git",
