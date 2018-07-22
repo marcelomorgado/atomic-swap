@@ -21,58 +21,58 @@ class EtherAtomicSwap {
   }
 
 
-    async participate(participantAccount, initiatorAddress, amount, secretHash) {
+  async participate(participantAccount, initiatorAddress, amount, secretHash) {
 
-      let refundTime = ETH_PARTICIPATOR_REFUND_TIME;
-      let hashedSecret = '0x' + secretHash;
-      let counterParty = initiatorAddress;
+    let refundTime = ETH_PARTICIPATOR_REFUND_TIME;
+    let hashedSecret = '0x' + secretHash;
+    let counterParty = initiatorAddress;
 
-      const deployment = await this.deployContract(participantAccount, refundTime, hashedSecret, counterParty, amount);
+    const deployment = await this.deployContract(participantAccount, refundTime, hashedSecret, counterParty, amount);
 
-      return {
-        contractAddress: deployment.contractAddress,
-        txid: deployment.txid
-      }
-
+    return {
+      contractAddress: deployment.contractAddress,
+      txid: deployment.txid
     }
 
-    async redeem(beneficiaryAccount, contractAddress, secret) {
+  }
 
-      const partyAddress = beneficiaryAccount.getWallet().getAddressString();
-      let abi = this.contractAbi();
-      let AtomicSwap = web3.eth.contract(abi);
-      var atomicSwap = AtomicSwap.at(contractAddress);
-      let contractData = await atomicSwap.redeem.getData(web3.toHex(secret));
+  async redeem(beneficiaryAccount, contractAddress, secret) {
 
-      // Construct the raw transaction
-      const gasPrice = await web3.eth.gasPrice;
-      const gasPriceHex = web3.toHex(gasPrice);
-      const gasLimitHex = web3.toHex(ETHER_GAS_LIMIT);
-      const nonce = await web3.eth.getTransactionCount(partyAddress);
-      const nonceHex = web3.toHex(nonce);
+    const partyAddress = beneficiaryAccount.getWallet().getAddressString();
+    let abi = this.contractAbi();
+    let AtomicSwap = web3.eth.contract(abi);
+    var atomicSwap = AtomicSwap.at(contractAddress);
+    let contractData = await atomicSwap.redeem.getData(web3.toHex(secret));
 
-      const rawTx = {
-          nonce: nonceHex,
-          gasPrice: gasPriceHex,
-          gasLimit: gasLimitHex,
-          to: contractAddress,
-          data: contractData
-      };
+    // Construct the raw transaction
+    const gasPrice = await web3.eth.gasPrice;
+    const gasPriceHex = web3.toHex(gasPrice);
+    const gasLimitHex = web3.toHex(ETHER_GAS_LIMIT);
+    const nonce = await web3.eth.getTransactionCount(partyAddress);
+    const nonceHex = web3.toHex(nonce);
 
-      var privateKey = beneficiaryAccount.getWallet().getPrivateKey();
+    const rawTx = {
+        nonce: nonceHex,
+        gasPrice: gasPriceHex,
+        gasLimit: gasLimitHex,
+        to: contractAddress,
+        data: contractData
+    };
 
-      const tx = new ethereumjs.Tx(rawTx);
-      tx.sign(privateKey);
-      const serializedTx = tx.serialize();
-      let txid = await web3.eth.sendRawTransaction('0x'+serializedTx.toString('hex'));
-      await this.waitTxConfirmation(txid);
+    var privateKey = beneficiaryAccount.getWallet().getPrivateKey();
+
+    const tx = new ethereumjs.Tx(rawTx);
+    tx.sign(privateKey);
+    const serializedTx = tx.serialize();
+    let txid = await web3.eth.sendRawTransaction('0x'+serializedTx.toString('hex'));
+    await this.waitTxConfirmation(txid);
 
 
 
-      return {
-        txid: txid
-      }
+    return {
+      txid: txid
     }
+  }
 
   async refund(fromAccount, contractAddress, beneficiaryAddress) {
 
