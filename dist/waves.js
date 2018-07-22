@@ -15,14 +15,14 @@ class WavesAtomicSwap {
     const secretHash = CryptoJS.SHA256(secret).toString();
     const deployContractTxResult = await this.deployContract(contractAccount, initiatorAccount.address, participantAddress, refundTime, secretHash);
     console.log('contract deployed. txid: ' + deployContractTxResult.id);
-    console.log('waiting for tx confirmation...');
-    await this.waitTxConfirmation(deployContractTxResult.id);
-    console.log('tx confirmated. contract address: ' + contractAccount.address);
+    //console.log('waiting for tx confirmation...');
+    //await this.waitTxConfirmation(deployContractTxResult.id);
+    //console.log('tx confirmated. contract address: ' + contractAccount.address);
 
     return {
       secret: secret,
       secretHash: secretHash,
-      contractAddress: contractAccount.address,
+      //contractAddress: contractAccount.address,
       txid: deployContractTxResult.id
     };
 
@@ -42,12 +42,12 @@ class WavesAtomicSwap {
     const refundTime = WAVES_INITIATOR_REFUND_TIME;
     const deployContractTxResult = await this.deployContract(contractAccount, participantAccount.address, initiatorAddress, refundTime, secretHash);
     console.log('contract deployed. txid: ' + deployContractTxResult.id);
-    console.log('waiting for tx confirmation...');
-    await this.waitTxConfirmation(deployContractTxResult.id);
-    console.log('tx confirmated. contract address: ' + contractAccount.address);
+    //console.log('waiting for tx confirmation...');
+    //await this.waitTxConfirmation(deployContractTxResult.id);
+    //console.log('tx confirmated. contract address: ' + contractAccount.address);
 
     return {
-      contractAddress: contractAccount.address,
+      //contractAddress: contractAccount.address,
       txid: deployContractTxResult.id
     };
 
@@ -78,9 +78,9 @@ class WavesAtomicSwap {
     console.log('sending redeem tx...');
     const redeemTxResult = await this.broadcastTx(transferTxJSON);
     console.log('redeem tx sent. txid: ' + redeemTxResult.id);
-    console.log('waiting for redeem tx confirmation...');
-    await this.waitTxConfirmation(redeemTxResult.id);
-    console.log('tx confirmated.');
+    //console.log('waiting for redeem tx confirmation...');
+    //await this.waitTxConfirmation(redeemTxResult.id);
+    //console.log('tx confirmated.');
 
     return {
       txid: redeemTxResult.id
@@ -109,9 +109,9 @@ class WavesAtomicSwap {
     console.log('sending refund tx...');
     const refundTxResult = await this.broadcastTx(transferTxJSON);
     console.log('refund tx sent. txid: ' + refundTxResult.id);
-    console.log('waiting for refund tx confirmation...')
-    await this.waitTxConfirmation(refundTxResult.id);
-    console.log('tx confirmated.');
+    //console.log('waiting for refund tx confirmation...')
+    //await this.waitTxConfirmation(refundTxResult.id);
+    //console.log('tx confirmated.');
 
     return {
       txid: refundTxResult.id
@@ -196,6 +196,9 @@ class WavesAtomicSwap {
 
   async getContractTxInfo(txid) {
 
+    console.log('waiting for counter party tx confirmation...');
+    await this.waitTxConfirmation(txid);
+
     let tx = await Waves.API.Node.transactions.get(txid);
     let contractAddress = tx.sender;
 
@@ -212,6 +215,9 @@ class WavesAtomicSwap {
 
 
   async getRedeemTxInfo(txid) {
+    console.log('waiting for counter party tx confirmation...');
+    await this.waitTxConfirmation(txid);
+
     let tx = await Waves.API.Node.transactions.get(txid);
     let proof = tx.proofs[0];
     let secret = new TextDecoder('utf-8').decode(Base58.decode(proof));

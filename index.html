@@ -9,6 +9,9 @@
   hr {
     background-color: #fff;
   }
+  p {
+    margin-bottom: 0px !important;
+  }
   </style>
   <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.min.css" crossorigin="anonymous">
   <script src="./node_modules/jquery/dist/jquery.min.js"></script>
@@ -29,7 +32,7 @@
 </head>
 <body>
   <div class="container">
-  running on testnet - Use browser console for debug
+  running on testnet - <strong>use browser console for debug</strong>
   <div id="initialize">
     <select name="send" class="form-control">
       <option value="ETH">Send Ether</option>
@@ -78,7 +81,7 @@
     <button name="btnParticipantRedeem" class="form-control">Redeem</button>
     <button name="btnRefund" class="form-control">Refund</button>
   </div>
-
+  <br/>
   <div id="logDiv">
   </div>
 </div>
@@ -108,7 +111,12 @@ $(function() {
 
     initiation = await app.initiate(send, wallets[send], participantAddress, amount);
 
-    logInitiation(initiation);
+    log('<hr/>');
+    log('contract txid: ' + makeTxLink(send, initiation.txid) + ' (send to counter party)');
+    log('secret hash: ' + initiation.secretHash);
+    log('secret: ' + initiation.secret + ' (keep it safe for now)');
+    log('contract successfully created!');
+
     prepareAndShowRedeemDiv();
     div.hide();
   });
@@ -126,7 +134,10 @@ $(function() {
 
     participation = await app.participate(send, wallets[send], initiatorAddress, amount, secretHash);
 
-    logParticipation(participation);
+    log('<hr/>');
+    log('contract txid: ' + makeTxLink(send, participation.txid) + ' (send to counter party)');
+    log('contract successfully created!');
+
     prepareAndShowRedeemDiv();
     div.hide();
 
@@ -142,10 +153,15 @@ $(function() {
     let participantContractInfo = await app.getContractTxInfo(receive, participationTxId);
     let initiatorRedeem = await app.redeem(receive, wallets[receive], participantContractInfo, secret);
 
-    log('transaction successfully sent!');
+    log('<hr/>');
     log('redeem txid: ' + makeTxLink(receive, initiatorRedeem.txid) + ' (send to counter party)');
+    log('transaction successfully sent!');
 
-    div.find('input,button').not("[name='btnRefund']").hide();
+    div.find('input,button').hide();
+    div.find("[name='btnRefund']").show();
+
+    log('<hr/>');
+    log('if counter party don\'t redeem, you can refund after ' + ((party == 'participant') ? app.getParticipantRefundHours() : app.getInititatorRefundHours()) + ' hours')
   });
 
 
@@ -159,11 +175,17 @@ $(function() {
     wallets[receive] = app.getAccount(receive, mnemonic);
     let initiationTxInfo = await app.getContractTxInfo(receive, initiationTxId);
     let initiatorRedeemTxInfo = await app.getRedeemTxInfo(send, initiatorRedeemTxId);
-    let initiatorRedeem = await app.redeem(receive, wallets[receive], initiationTxInfo, initiatorRedeemTxInfo.secret);
+    let participantRedeem = await app.redeem(receive, wallets[receive], initiationTxInfo, initiatorRedeemTxInfo.secret);
 
+    log('<hr/>');
+    log('redeem txid: ' + makeTxLink(receive, participantRedeem.txid));
     log('transaction successfully sent!');
 
-    div.find('input,button').not("[name='btnRefund']").hide();
+    div.find('input,button').hide();
+    div.find("[name='btnRefund']").show();
+
+    log('<hr/>');
+    log('if counter party don\'t redeem, you can refund after ' + ((party == 'participant') ? app.getParticipantRefundHours() : app.getInititatorRefundHours()) + ' hours')
   });
 
 
@@ -177,8 +199,6 @@ $(function() {
       log('invalid operation!');
     } else {
       party = $("select[name='party']").val();
-
-      log('<hr/>')
 
       if(party == 'initiator')
         prepareAndShowInitiateDiv();
@@ -195,12 +215,7 @@ $(function() {
     else if(party == 'participant')
       prepareAndShowParticipantRedeemDiv();
 
-    log('<hr/>')
-    let refundHours = app.getInititatorRefundHours();
-    if(party == 'participant')
-      refundHours = app.getParticipantRefundHours();
 
-    log('if counter party don\'t redeem, you can refund after ' + refundHours + ' hours')
   };
 
   var prepareAndShowParticipantRedeemDiv = () => {
@@ -208,6 +223,7 @@ $(function() {
     div.find("[name='walletMnemonic']").attr('placeholder','mnemonic of your '+receive+' wallet');
     div.find("[name='counterPartyRedeemTxId']").attr('placeholder','initiator '+send+' redeem txid');
     div.find("[name='counterPartyContractTxId']").attr('placeholder','initiator '+receive+' contract txid');
+    div.find("[name='btnRefund']").hide();
     div.show();
   };
 
@@ -216,6 +232,7 @@ $(function() {
     div.find("[name='walletMnemonic']").attr('placeholder','mnemonic of your '+receive+' wallet');
     div.find("[name='secret']").val(initiation.secret);
     div.find("[name='counterPartyContractTxId']").attr('placeholder','participant '+receive+' contract txid');
+    div.find("[name='btnRefund']").hide();
     div.show();
   };
 
@@ -223,35 +240,19 @@ $(function() {
     let div = $("#initiateDiv");
     div.find("[name='walletMnemonic']").attr('placeholder','mnemonic of your '+send+' wallet');
     div.find("[name='counterPartyAddress']").attr('placeholder','participant '+send+' address');
-    div.find("[name='amount']").attr('placeholder',send + ' amount to send');
+    div.find("[name='amount']").attr('placeholder',send + ' amount to send (eg. 0.1)');
     div.show();
   };
-0.01
+
   var prepareAndShowParticipateDiv = () => {
     let div = $("#participateDiv");
     div.find("[name='walletMnemonic']").attr('placeholder','mnemonic of your '+send+' wallet');
     div.find("[name='counterPartyAddress']").attr('placeholder','initiator '+send+' address');
     div.find("[name='initiatorContractTxId']").attr('placeholder', 'initiator '+receive+' contract txid');
-    div.find("[name='amount']").attr('placeholder',send + ' amount to send');
+    div.find("[name='amount']").attr('placeholder',send + ' amount to send (eg. 0.1)');
     div.show();
   };
 
-  var logParticipation = (p) => {
-
-    log('contract address: ' + makeAddressLink(send, p.contractAddress));
-    log('contract txid: ' + makeTxLink(send, p.txid) + ' (send to counter party)');
-    log('contract successfully created!');
-  };
-
-  var logInitiation = (i) => {
-
-
-    log('contract address: ' + makeAddressLink(send, i.contractAddress));
-    log('contract txid: ' + makeTxLink(send, i.txid) + ' (send to counter party)');
-    log('secret hash: ' + i.secretHash);
-    log('secret: ' + i.secret + ' (keep it safe for now)');
-    log('contract successfully created!');
-  };
 
   var makeAddressLink = (currency, address) => {
     let url = makeExplorerUrl(currency, 'address', address);
@@ -273,9 +274,8 @@ $(function() {
 
 function log(msg) {
 
-  $("#logDiv").prepend(msg);
-  if(msg != '<hr/>')
-    $("#logDiv").prepend('<br/>');
+  $("#logDiv").prepend('<p>'+msg+'</p>');
+
 }
 
 function wait(ms){

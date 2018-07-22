@@ -70,9 +70,9 @@ class EtherAtomicSwap {
     console.log('sending redeem tx...');
     let txid = await web3.eth.sendRawTransaction('0x'+serializedTx.toString('hex'));
     console.log('redeem tx sent. txid: ' + txid);
-    console.log('waiting for redeem tx confirmation...');
-    await this.waitTxConfirmation(txid);
-    console.log('tx confirmated.');
+    //console.log('waiting for redeem tx confirmation...');
+    //await this.waitTxConfirmation(txid);
+    //console.log('tx confirmated.');
 
     return {
       txid: txid
@@ -111,18 +111,21 @@ class EtherAtomicSwap {
     console.log('sending refund tx...');
     let txid = await web3.eth.sendRawTransaction('0x'+serializedTx.toString('hex'));
     console.log('refund tx sent. txid: ' + txid);
-    console.log('waiting for refund tx confirmation...');
-    await this.waitTxConfirmation(txid);
-    console.log('tx confirmated.');
+    //console.log('waiting for refund tx confirmation...');
+    //await this.waitTxConfirmation(txid);
+    //console.log('tx confirmated.');
 
     return {
       txid: txid
     }
   }
 
-  async getContractTxInfo(deployTxId) {
+  async getContractTxInfo(txid) {
 
-    let receipt = await web3.eth.getTransactionReceipt(deployTxId);
+    console.log('waiting for counter party tx confirmation...');
+    await this.waitTxConfirmation(txid);
+
+    let receipt = await web3.eth.getTransactionReceipt(txid);
     let logData = receipt.logs[0].data
     let secretHash = logData.substring(2,logData.length).substring(128,192);
     let contractAddress = receipt.contractAddress;
@@ -137,6 +140,9 @@ class EtherAtomicSwap {
 
 
   async getRedeemTxInfo(txid) {
+    console.log('waiting for counter party tx confirmation...');
+    await this.waitTxConfirmation(txid);
+
     let tx = await web3.eth.getTransaction(txid);
     let abi = this.contractAbi();
     let AtomicSwap = web3.eth.contract(abi);
@@ -199,15 +205,16 @@ class EtherAtomicSwap {
     console.log('sending contract deploy tx...');
     let txid = await web3.eth.sendRawTransaction('0x'+serializedTx.toString('hex'));
     console.log('contract deployed. txid: ' + txid);
-    console.log('waiting for tx confirmation...');
-    await this.waitTxConfirmation(txid);
-    let contractAddress = await web3.eth.getTransactionReceipt(txid).contractAddress;
+    //console.log('waiting for tx confirmation...');
+    //await this.waitTxConfirmation(txid);
+    //let contractAddress = await web3.eth.getTransactionReceipt(txid).contractAddress;
     //var atomicSwap = AtomicSwap.at(contractAddress);
-    console.log('tx confirmated. contract address: ' + contractAddress)
+    //console.log('tx confirmated. contract address: ' + contractAddress)
 
     return {
-      txid: txid,
-      contractAddress: contractAddress
+      //contractAddress: contractAddress,
+      txid: txid
+
     }
 
   }
