@@ -86,13 +86,13 @@ class App {
     }
   }
 
-  async refund() {
+  async refund(currency, partyAccount, counterPartyContractInfo, counterPartyAddress) {
     this.validateCurrency(currency);
     if(currency == 'ETH') {
-
+      return await ether.refund(partyAccount, counterPartyContractInfo.contractAddress, counterPartyAddress);
     }
     else if(currency == 'WAVES') {
-
+      return await waves.refund(partyAccount, counterPartyContractInfo.contractPubKey, counterPartyAddress);
     }
   }
 

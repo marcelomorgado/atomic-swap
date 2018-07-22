@@ -2,17 +2,22 @@ class WavesAtomicSwap {
 
   async initiate(initiatorAccount, participantAddress, amount) {
 
+    console.log('creating and funding contract account...');
     const contractAccount = Waves.Seed.create();
-
     const fundContractTxResult = await this.makeSimpleTransfer(initiatorAccount, contractAccount.address, amount);
+    console.log('funding tx sent. txid: ' + fundContractTxResult.id);
+    console.log('wating for funding tx confirmation...')
     await this.waitTxConfirmation(fundContractTxResult.id);
-
+    console.log('tx confirmated.');
 
     const refundTime = WAVES_INITIATOR_REFUND_TIME;
     const secret = Base58.encode(new TextEncoder("utf-8").encode(secureRandom(4)));
     const secretHash = CryptoJS.SHA256(secret).toString();
     const deployContractTxResult = await this.deployContract(contractAccount, initiatorAccount.address, participantAddress, refundTime, secretHash);
+    console.log('contract deployed. txid: ' + deployContractTxResult.id);
+    console.log('waiting for tx confirmation...');
     await this.waitTxConfirmation(deployContractTxResult.id);
+    console.log('tx confirmated. contract address: ' + contractAccount.address);
 
     return {
       secret: secret,
@@ -26,13 +31,20 @@ class WavesAtomicSwap {
 
   async participate(participantAccount, initiatorAddress, amount, secretHash) {
 
+    console.log('creating and funding contract account...');
     const contractAccount = Waves.Seed.create();
     const fundContractTxResult = await this.makeSimpleTransfer(participantAccount, contractAccount.address, amount);
+    console.log('funding tx sent. txid: ' + fundContractTxResult.id);
+    console.log('wating for funding tx confirmation...')
     await this.waitTxConfirmation(fundContractTxResult.id);
+    console.log('tx confirmated.');
 
     const refundTime = WAVES_INITIATOR_REFUND_TIME;
     const deployContractTxResult = await this.deployContract(contractAccount, participantAccount.address, initiatorAddress, refundTime, secretHash);
+    console.log('contract deployed. txid: ' + deployContractTxResult.id);
+    console.log('waiting for tx confirmation...');
     await this.waitTxConfirmation(deployContractTxResult.id);
+    console.log('tx confirmated. contract address: ' + contractAccount.address);
 
     return {
       contractAddress: contractAccount.address,
@@ -43,6 +55,7 @@ class WavesAtomicSwap {
 
   async redeem(beneficiaryAccount, contractPubKey, secret) {
 
+    console.log('building redeem tx object...');
     const partyAddress = beneficiaryAccount.address;
     secret = Base58.encode(new TextEncoder("utf-8").encode(secret));
     const contractAddress = Waves.tools.getAddressFromPublicKey(contractPubKey);
@@ -62,8 +75,12 @@ class WavesAtomicSwap {
 
     const transferTx = await Waves.tools.createTransaction(Waves.constants.TRANSFER_TX_NAME, transferTxObj);
     const transferTxJSON = await transferTx.getJSON();
+    console.log('sending redeem tx...');
     const redeemTxResult = await this.broadcastTx(transferTxJSON);
+    console.log('redeem tx sent. txid: ' + redeemTxResult.id);
+    console.log('waiting for redeem tx confirmation...');
     await this.waitTxConfirmation(redeemTxResult.id);
+    console.log('tx confirmated.');
 
     return {
       txid: redeemTxResult.id
@@ -72,6 +89,7 @@ class WavesAtomicSwap {
 
   async refund(contractPubKey, contractAddress, beneficiaryAddress) {
 
+    console.log('building refund tx object...');
     const amount = (await Waves.API.Node.addresses.balance(contractAddress)).balance;
 
     const transferTxObj = {
@@ -88,8 +106,12 @@ class WavesAtomicSwap {
     const transferTx = await Waves.tools.createTransaction(Waves.constants.TRANSFER_TX_NAME, transferTxObj);
 
     const transferTxJSON = await transferTx.getJSON();
+    console.log('sending refund tx...');
     const refundTxResult = await this.broadcastTx(transferTxJSON);
+    console.log('refund tx sent. txid: ' + refundTxResult.id);
+    console.log('waiting for refund tx confirmation...')
     await this.waitTxConfirmation(refundTxResult.id);
+    console.log('tx confirmated.');
 
     return {
       txid: refundTxResult.id
@@ -127,6 +149,7 @@ class WavesAtomicSwap {
 
   async deployContract(contractAccount, partyAddress, counterPartyAddress, refundTime, secretHash) {
 
+    console.log('building contract script...');
     const refundHeight = refundTime;
     const initHeight = (await Waves.API.Node.blocks.last()).height;
     secretHash = Base58.encode(this.decodeHexStringToByteArray(secretHash));
@@ -147,8 +170,10 @@ class WavesAtomicSwap {
       }
     `;
 
+    console.log('compiling contract script...');
     const compiledScript = await Waves.API.Node.utils.script.compile(scriptBody);
 
+    console.log('building deploy contract tx object...');
     const setScriptObj = {
       fee: WAVES_TX_FEE,
       script: compiledScript,
@@ -160,6 +185,7 @@ class WavesAtomicSwap {
     setScriptTx.addProof(contractAccount.keyPair.privateKey);
 
     const deployContractTx = await setScriptTx.getJSON();
+    console.log('sending contract deploy tx... ');
     return await this.broadcastTx(deployContractTx);
   }
 

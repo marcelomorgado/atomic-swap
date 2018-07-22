@@ -1,6 +1,18 @@
 <html>
 <head>
+  <style>
+  body {
+    font-family: 'Courier New', sans-serif !important;
+    background-color: #000 !important;
+    color: #0f0 !important;
+  }
+  hr {
+    background-color: #fff;
+  }
+  </style>
+  <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.min.css" crossorigin="anonymous">
   <script src="./node_modules/jquery/dist/jquery.min.js"></script>
+  <script src="./node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
   <script src="./node_modules/secure-random/lib/secure-random.js"></script>
   <script src="./node_modules/base-58/Base58.js"></script>
   <script src="./node_modules/crypto-js/crypto-js.js"></script>
@@ -16,60 +28,60 @@
   <script src="./dist/app.js"></script>
 </head>
 <body>
+  <div class="container">
+  running on testnet - Use browser console for debug
+  <div id="initialize">
+    <select name="send" class="form-control">
+      <option value="ETH">Send Ether</option>
+      <option value="WAVES">Send Waves</option>
+    </select>
+    <select name="receive" class="form-control">
+      <option value="WAVES">Receive Waves</option>
+      <option value="ETH">Receive Ether</option>
+    </select>
+    <select name="party" class="form-control">
+      <option value="initiator">Initiate</option>
+      <option value="participant">Participate</option>
+    </select>
+    <button name="btnStart" class="form-control">Go</button>
+  </div>
 
-<div id="initialize">
-  <select name="send">
-    <option value="ETH">Send Ether</option>
-    <option value="WAVES">Send Waves</option>
-  </select>
-  <select name="receive">
-    <option value="WAVES">Receive Waves</option>
-    <option value="ETH">Receive Ether</option>
-  </select>
-  <select name="party">
-    <option value="initiator">Initiate</option>
-    <option value="participant">Participate</option>
-  </select>
-  <button name="btnStart">Go</button>
+  <div id="initiateDiv" style="display: none">
+    <input name="walletMnemonic" class="form-control"/>
+    <input name="counterPartyAddress" class="form-control"/>
+    <input name="amount" class="form-control"/>
+    <button name="btnInitiate" class="form-control">Create contract</button>
+  </div>
+
+  <div id="participateDiv" style="display: none">
+    <input name="walletMnemonic" class="form-control"/>
+    <input name="counterPartyAddress" class="form-control"/>
+    <input name="initiatorContractTxId" class="form-control"/>
+    <input name="amount" class="form-control"/>
+    <button name="btnParticipate" class="form-control">Create contract</button>
+  </div>
+
+  <div id="initiatorRedeemDiv" style="display: none">
+    <input name="walletMnemonic" class="form-control"/>
+    <input name="secret" class="form-control"/>
+    <input name="counterPartyContractTxId" class="form-control"/>
+    <button name="btnInitiatorRedeem" class="form-control">Redeem</button>
+    <button name="btnRefund" class="form-control">Refund</button>
+  </div>
+
+  <div id="participantRedeemDiv" style="display: none">
+    <input name="walletMnemonic" class="form-control"/>
+    <input name="counterPartyRedeemTxId" class="form-control"/>
+    <!--
+    <input name="counterPartyContractTxId" />
+    -->
+    <button name="btnParticipantRedeem" class="form-control">Redeem</button>
+    <button name="btnRefund" class="form-control">Refund</button>
+  </div>
+
+  <div id="logDiv">
+  </div>
 </div>
-
-<div id="initiateDiv" style="display: none">
-  <input name="walletMnemonic" />
-  <input name="counterPartyAddress" />
-  <input name="amount" />
-  <button name="btnInitiate">Create contract</button>
-</div>
-
-<div id="participateDiv" style="display: none">
-  <input name="walletMnemonic" />
-  <input name="counterPartyAddress" />
-  <input name="initiatorContractTxId" />
-  <input name="amount" />
-  <button name="btnParticipate">Create contract</button>
-</div>
-
-<div id="initiatorRedeemDiv" style="display: none">
-  <input name="walletMnemonic" />
-  <input name="secret" />
-  <input name="counterPartyContractTxId" />
-  <button name="btnInitiatorRedeem">Redeem</button>
-  <button name="btnRefund">Refund</button>
-</div>
-
-<div id="participantRedeemDiv" style="display: none">
-  <input name="walletMnemonic" />
-  <input name="counterPartyRedeemTxId" />
-  <!--
-  <input name="counterPartyContractTxId" />
-  -->
-  <button name="btnParticipantRedeem">Redeem</button>
-  <button name="btnRefund">Refund</button>
-</div>
-
-<div id="logDiv">
-  <br/><br/>
-</div>
-
 </body>
 <script>
 $(function() {
@@ -194,8 +206,8 @@ $(function() {
   var prepareAndShowParticipantRedeemDiv = () => {
     let div = $("#participantRedeemDiv");
     div.find("[name='walletMnemonic']").attr('placeholder','mnemonic of your '+receive+' wallet');
-    div.find("[name='counterPartyRedeemTxId']").attr('placeholder','counter party '+send+' redeem txid');
-    div.find("[name='counterPartyContractTxId']").attr('placeholder','counter party '+receive+' contract txid');
+    div.find("[name='counterPartyRedeemTxId']").attr('placeholder','initiator '+send+' redeem txid');
+    div.find("[name='counterPartyContractTxId']").attr('placeholder','initiator '+receive+' contract txid');
     div.show();
   };
 
@@ -203,7 +215,7 @@ $(function() {
     let div = $("#initiatorRedeemDiv");
     div.find("[name='walletMnemonic']").attr('placeholder','mnemonic of your '+receive+' wallet');
     div.find("[name='secret']").val(initiation.secret);
-    div.find("[name='counterPartyContractTxId']").attr('placeholder','counter party '+receive+' contract txid');
+    div.find("[name='counterPartyContractTxId']").attr('placeholder','participant '+receive+' contract txid');
     div.show();
   };
 
@@ -214,28 +226,31 @@ $(function() {
     div.find("[name='amount']").attr('placeholder',send + ' amount to send');
     div.show();
   };
-
+0.01
   var prepareAndShowParticipateDiv = () => {
     let div = $("#participateDiv");
     div.find("[name='walletMnemonic']").attr('placeholder','mnemonic of your '+send+' wallet');
-    div.find("[name='counterPartyAddress']").attr('placeholder','participant '+send+' address');
+    div.find("[name='counterPartyAddress']").attr('placeholder','initiator '+send+' address');
     div.find("[name='initiatorContractTxId']").attr('placeholder', 'initiator '+receive+' contract txid');
     div.find("[name='amount']").attr('placeholder',send + ' amount to send');
     div.show();
   };
 
   var logParticipation = (p) => {
-    log('contract successfully created!');
-    log('contract txid: ' + makeTxLink(send, p.txid) + ' (send to counter party)');
+
     log('contract address: ' + makeAddressLink(send, p.contractAddress));
+    log('contract txid: ' + makeTxLink(send, p.txid) + ' (send to counter party)');
+    log('contract successfully created!');
   };
 
   var logInitiation = (i) => {
-    log('contract successfully created!');
-    log('contract txid: ' + makeTxLink(send, i.txid) + ' (send to counter party)');
+
+
     log('contract address: ' + makeAddressLink(send, i.contractAddress));
-    log('secret: ' + i.secret + ' (keep it safe for now)');
+    log('contract txid: ' + makeTxLink(send, i.txid) + ' (send to counter party)');
     log('secret hash: ' + i.secretHash);
+    log('secret: ' + i.secret + ' (keep it safe for now)');
+    log('contract successfully created!');
   };
 
   var makeAddressLink = (currency, address) => {
@@ -259,7 +274,8 @@ $(function() {
 function log(msg) {
 
   $("#logDiv").prepend(msg);
-  $("#logDiv").prepend('<br/>');
+  if(msg != '<hr/>')
+    $("#logDiv").prepend('<br/>');
 }
 
 function wait(ms){
