@@ -1,6 +1,6 @@
 # atomic-swap
-
-Atomic Swap
+* Supports WAVES and ETH.
+* Use on testnet only!
 
 ## Usage
 ```
@@ -9,9 +9,7 @@ $ npm install
 $ npm start
 ```
 
-## Notes
-Supports WAVES and ETH.
-Use on testnet only.
+
 
 ## TODO
 * UI/UX improvements
