@@ -1,0 +1,273 @@
+<html>
+<head>
+  <script src="./node_modules/jquery/dist/jquery.min.js"></script>
+  <script src="./node_modules/secure-random/lib/secure-random.js"></script>
+  <script src="./node_modules/base-58/Base58.js"></script>
+  <script src="./node_modules/crypto-js/crypto-js.js"></script>
+  <script src="./node_modules/@waves/waves-api/dist/waves-api.min.js"></script>
+  <script src="./node_modules/web3/dist/web3.min.js"></script>
+  <script src="./dist/thridparties/bip39.min.js"></script>
+  <script src="./dist/thridparties/request-promise.min.js"></script>
+  <script src="./dist/thridparties/ethereumjs-tx/ethereumjs-tx-1.3.3.min.js"></script>
+  <script src="./dist/thridparties/ethereumjs-wallet/ethereumjs-wallet-0.6.0.min.js"></script>
+  <script src="./dist/thridparties/ethereumjs-wallet-hd/ethereumjs-wallet-hd-0.6.0.min.js"></script>
+  <script src="./dist/waves.js"></script>
+  <script src="./dist/ether.js"></script>
+  <script src="./dist/app.js"></script>
+</head>
+<body>
+
+<div id="initialize">
+  <select name="send">
+    <option value="ETH">Send Ether</option>
+    <option value="WAVES">Send Waves</option>
+  </select>
+  <select name="receive">
+    <option value="WAVES">Receive Waves</option>
+    <option value="ETH">Receive Ether</option>
+  </select>
+  <select name="party">
+    <option value="initiator">Initiate</option>
+    <option value="participant">Participate</option>
+  </select>
+  <button name="btnStart">Go</button>
+</div>
+
+<div id="initiateDiv" style="display: none">
+  <input name="walletMnemonic" />
+  <input name="counterPartyAddress" />
+  <input name="amount" />
+  <button name="btnInitiate">Create contract</button>
+</div>
+
+<div id="participateDiv" style="display: none">
+  <input name="walletMnemonic" />
+  <input name="counterPartyAddress" />
+  <input name="initiatorContractTxId" />
+  <input name="amount" />
+  <button name="btnParticipate">Create contract</button>
+</div>
+
+<div id="initiatorRedeemDiv" style="display: none">
+  <input name="walletMnemonic" />
+  <input name="secret" />
+  <input name="counterPartyContractTxId" />
+  <button name="btnInitiatorRedeem">Redeem</button>
+  <button name="btnRefund">Refund</button>
+</div>
+
+<div id="participantRedeemDiv" style="display: none">
+  <input name="walletMnemonic" />
+  <input name="counterPartyRedeemTxId" />
+  <!--
+  <input name="counterPartyContractTxId" />
+  -->
+  <button name="btnParticipantRedeem">Redeem</button>
+  <button name="btnRefund">Refund</button>
+</div>
+
+<div id="logDiv">
+  <br/><br/>
+</div>
+
+</body>
+<script>
+$(function() {
+
+  const app = new App();
+
+  var send = null;
+  var receive = null;
+  var party = null;
+
+  var initiation = null;
+  var participation = null;
+  var initiatorRedeem = null;
+  var participantRedeem = null;
+
+  var wallets = [];
+
+  $("[name='btnInitiate']").click(async function(){
+    let div = $("#initiateDiv");
+    let mnemonic = div.find("[name='walletMnemonic']").val();
+    let participantAddress = div.find("[name='counterPartyAddress']").val();
+    let amount = div.find("[name='amount']").val();
+    wallets[send] = app.getAccount(send, mnemonic);
+
+    initiation = await app.initiate(send, wallets[send], participantAddress, amount);
+
+    logInitiation(initiation);
+    prepareAndShowRedeemDiv();
+    div.hide();
+  });
+
+  $("[name='btnParticipate']").click(async function(){
+    let div = $("#participateDiv");
+    let inititationTxId = div.find("[name='initiatorContractTxId']").val();
+    let mnemonic = div.find("[name='walletMnemonic']").val();
+    let initiatorAddress = div.find("[name='counterPartyAddress']").val();
+    let amount = div.find("[name='amount']").val();
+
+    let initiationContractInfo = await app.getContractTxInfo(receive, inititationTxId);
+    wallets[send] = app.getAccount(send, mnemonic);
+    let secretHash = initiationContractInfo.secretHash;
+
+    participation = await app.participate(send, wallets[send], initiatorAddress, amount, secretHash);
+
+    logParticipation(participation);
+    prepareAndShowRedeemDiv();
+    div.hide();
+
+  });
+
+  $("[name='btnInitiatorRedeem']").click(async function(){
+    let div = $("#initiatorRedeemDiv");
+    let mnemonic = div.find("[name='walletMnemonic']").val();
+    let participationTxId = div.find("[name='counterPartyContractTxId']").val();
+    let secret = div.find("[name='secret']").val();
+
+    wallets[receive] = app.getAccount(receive, mnemonic);
+    let participantContractInfo = await app.getContractTxInfo(receive, participationTxId);
+    let initiatorRedeem = await app.redeem(receive, wallets[receive], participantContractInfo, secret);
+
+    log('transaction successfully sent!');
+    log('redeem txid: ' + makeTxLink(receive, initiatorRedeem.txid) + ' (send to counter party)');
+
+    div.find('input,button').not("[name='btnRefund']").hide();
+  });
+
+
+  $("[name='btnParticipantRedeem']").click(async function(){
+    let div = $("#participantRedeemDiv");
+    let initiationTxId = $("#participateDiv").find("[name='initiatorContractTxId']").val();
+    let mnemonic = div.find("[name='walletMnemonic']").val();
+    let initiatorRedeemTxId = div.find("[name='counterPartyRedeemTxId']").val();
+    //let initiationTxId = div.find("[name='counterPartyContractTxId']").val();
+
+    wallets[receive] = app.getAccount(receive, mnemonic);
+    let initiationTxInfo = await app.getContractTxInfo(receive, initiationTxId);
+    let initiatorRedeemTxInfo = await app.getRedeemTxInfo(send, initiatorRedeemTxId);
+    let initiatorRedeem = await app.redeem(receive, wallets[receive], initiationTxInfo, initiatorRedeemTxInfo.secret);
+
+    log('transaction successfully sent!');
+
+    div.find('input,button').not("[name='btnRefund']").hide();
+  });
+
+
+  $("[name='btnStart']").click(function(){
+    send = $("select[name='send']").val();
+    receive = $("select[name='receive']").val();
+
+    if(send == receive) {
+      send = null;
+      receive = null;
+      log('invalid operation!');
+    } else {
+      party = $("select[name='party']").val();
+
+      log('<hr/>')
+
+      if(party == 'initiator')
+        prepareAndShowInitiateDiv();
+      else if(party == 'participant')
+        prepareAndShowParticipateDiv();
+
+      $("#initialize").hide();
+    }
+  });
+
+  var prepareAndShowRedeemDiv = () => {
+    if(party == 'initiator')
+      prepareAndShowInitiatorRedeemDiv();
+    else if(party == 'participant')
+      prepareAndShowParticipantRedeemDiv();
+
+    log('<hr/>')
+    let refundHours = app.getInititatorRefundHours();
+    if(party == 'participant')
+      refundHours = app.getParticipantRefundHours();
+
+    log('if counter party don\'t redeem, you can refund after ' + refundHours + ' hours')
+  };
+
+  var prepareAndShowParticipantRedeemDiv = () => {
+    let div = $("#participantRedeemDiv");
+    div.find("[name='walletMnemonic']").attr('placeholder','mnemonic of your '+receive+' wallet');
+    div.find("[name='counterPartyRedeemTxId']").attr('placeholder','counter party '+send+' redeem txid');
+    div.find("[name='counterPartyContractTxId']").attr('placeholder','counter party '+receive+' contract txid');
+    div.show();
+  };
+
+  var prepareAndShowInitiatorRedeemDiv = () => {
+    let div = $("#initiatorRedeemDiv");
+    div.find("[name='walletMnemonic']").attr('placeholder','mnemonic of your '+receive+' wallet');
+    div.find("[name='secret']").val(initiation.secret);
+    div.find("[name='counterPartyContractTxId']").attr('placeholder','counter party '+receive+' contract txid');
+    div.show();
+  };
+
+  var prepareAndShowInitiateDiv = () => {
+    let div = $("#initiateDiv");
+    div.find("[name='walletMnemonic']").attr('placeholder','mnemonic of your '+send+' wallet');
+    div.find("[name='counterPartyAddress']").attr('placeholder','participant '+send+' address');
+    div.find("[name='amount']").attr('placeholder',send + ' amount to send');
+    div.show();
+  };
+
+  var prepareAndShowParticipateDiv = () => {
+    let div = $("#participateDiv");
+    div.find("[name='walletMnemonic']").attr('placeholder','mnemonic of your '+send+' wallet');
+    div.find("[name='counterPartyAddress']").attr('placeholder','participant '+send+' address');
+    div.find("[name='initiatorContractTxId']").attr('placeholder', 'initiator '+receive+' contract txid');
+    div.find("[name='amount']").attr('placeholder',send + ' amount to send');
+    div.show();
+  };
+
+  var logParticipation = (p) => {
+    log('contract successfully created!');
+    log('contract txid: ' + makeTxLink(send, p.txid) + ' (send to counter party)');
+    log('contract address: ' + makeAddressLink(send, p.contractAddress));
+  };
+
+  var logInitiation = (i) => {
+    log('contract successfully created!');
+    log('contract txid: ' + makeTxLink(send, i.txid) + ' (send to counter party)');
+    log('contract address: ' + makeAddressLink(send, i.contractAddress));
+    log('secret: ' + i.secret + ' (keep it safe for now)');
+    log('secret hash: ' + i.secretHash);
+  };
+
+  var makeAddressLink = (currency, address) => {
+    let url = makeExplorerUrl(currency, 'address', address);
+    return "<a href='" + url + "' target='_blank'>" + address + "</a>";
+  }
+
+  var makeTxLink = (currency, txid) => {
+    let url = makeExplorerUrl(currency, 'tx', txid);
+    return "<a href='" + url + "' target='_blank'>" + txid + "</a>";
+  }
+
+  var makeExplorerUrl = (currency, type, value) => {
+    if(currency == 'ETH')
+      return 'https://ropsten.etherscan.io/'+type+'/'+value;
+    else if(currency == 'WAVES')
+      return 'https://testnet.wavesexplorer.com/'+type+'/'+value;
+  }
+});
+
+function log(msg) {
+
+  $("#logDiv").prepend(msg);
+  $("#logDiv").prepend('<br/>');
+}
+
+function wait(ms){
+   var start = new Date().getTime();
+   var end = start;
+   while(end < start + ms) {
+     end = new Date().getTime();
+  }
+}
+</script>
+</html>
